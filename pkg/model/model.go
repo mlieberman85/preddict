@@ -15,6 +15,10 @@
 
 package model
 
+import (
+	"github.com/mitchellh/mapstructure"
+)
+
 type Mapping struct {
 	predicateToMap string
 	indexes        []string
@@ -26,7 +30,28 @@ type ModelWithIndexes[T any] struct {
 	indexes []string
 }
 
-type DataModel[T any] interface {
+type Document map[string]interface{}
+
+type Converter[T any] interface {
 	// Convert takes an arbitrary map and converts it via the given mapping
 	Convert(d map[string]interface{}, m *Mapping) ModelWithIndexes[T]
+}
+
+func ConvertAny[T any](d map[string]interface{}, m *Mapping) (*ModelWithIndexes[T], error) {
+	mapped := make(map[string]interface{})
+	for k, v := range m.mappings {
+		mapped[k] = d[v]
+	}
+
+	model := ModelWithIndexes[T]{
+		model:   *new(T),
+		indexes: m.indexes,
+	}
+
+	err := mapstructure.Decode(mapped, &model.model)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model, nil
 }
